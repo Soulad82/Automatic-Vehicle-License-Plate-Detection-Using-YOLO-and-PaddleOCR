@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>License Plate Recognition</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 15px;
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .result-item img {
+            width: 160px;
+            height: auto;
+            border: 1px solid #333;
+        }
+        #results { margin-top: 20px; }
+        #status { margin-top: 10px; color: #0066cc; }
+    </style>
+</head>
+<body>
+    <h1>License Plate Recognition</h1>
+
+    <form id="uploadForm">
+        <label>Select video file:</label>
+        <input type="file" name="video" id="videoInput" accept="video/*" required>
+        <button type="submit">Upload & Process</button>
+    </form>
+
+    <div id="status"></div>
+
+    <h2>Detected Plates</h2>
+    <div id="results"></div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            resultsDiv.innerHTML = '';
+            statusDiv.textContent = 'Uploading and processing video... This may take a while.';
+
+            const fileInput = document.getElementById('videoInput');
+            if (!fileInput.files.length) {
+                statusDiv.textContent = 'Please select a video file.';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('video', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/process_video', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    statusDiv.textContent = errData.error || 'Error processing video.';
+                    return;
+                }
+
+                const data = await response.json();
+                statusDiv.textContent = 'Processing complete.';
+
+                if (!data.plates || data.plates.length === 0) {
+                    resultsDiv.innerHTML = '<p>No plates detected.</p>';
+                    return;
+                }
+
+                data.plates.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+
+                    const img = document.createElement('img');
+                    img.src = item.image_url;
+                    img.alt = item.text || 'Plate image';
+
+                    const text = document.createElement('div');
+                    text.innerHTML = `<strong>Text:</strong> ${item.text || '(no text)'}`;
+
+                    div.appendChild(img);
+                    div.appendChild(text);
+                    resultsDiv.appendChild(div);
+                });
+            } catch (err) {
+                console.error(err);
+                statusDiv.textContent = 'Unexpected error. Check console.';
+            }
+        });
+    </script>
+</body>
+</html>
